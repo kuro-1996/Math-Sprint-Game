@@ -9,6 +9,10 @@ $(document).ready(function () {
 	var btnRight = $(".btn-success");
 	var highlight = $(".highlight");
 	var gameResult = $(".game-result");
+	var restartBtn = $('.game-restart');
+	var scoreText = $('.game-result .score span')
+	var penaltyText = $('.game-result .penalty span')
+	var finalText = $('.game-result .final span')
 
 	levelSelect.each(function () {
 		$(this).change(function () {
@@ -26,6 +30,7 @@ $(document).ready(function () {
 
 	startBtn.click(function () {
 		if (!startBtn.hasClass("disabled")) {
+			startBtn.addClass("disabled");
 			level.css("display", "none");
 			gameStage.css("display", "block");
 			countDown.css("display", "flex");
@@ -46,6 +51,7 @@ $(document).ready(function () {
 					clearInterval(interval);
 				}
 			}, 1000);
+			startTimer();
 		}
 	});
 
@@ -57,6 +63,14 @@ $(document).ready(function () {
 		select(true);
 	});
 
+	restartBtn.click(function () {
+		gameResult.css('display', 'none')
+		level.css('display', 'block')
+		restartBtn.css('display', 'none')
+		startBtn.css('display', 'block')
+		resetQuestion()
+	})
+
 	var firstNumber = 0;
 	var secondNumber = 0;
 	var equationObj = {};
@@ -66,6 +80,7 @@ $(document).ready(function () {
 	var scrollCount = 0;
 	var wrongAnswers = 0;
 
+	//player select
 	function select(result) {
 		scrollCount += 80;
 		if (playerEquationArray.length < $(".game-level input:checked").val()) {
@@ -81,24 +96,45 @@ $(document).ready(function () {
 				playerEquationArray.length === +$(".game-level input:checked").val()
 			) {
 				gameStage.css("display", "none");
+				btnGroup.css('display', 'none')
 				gameResult.css("display", "block");
-				compare();
+				restartBtn.css('display', 'block')
+				clearInterval(timer)
+				compare()
+				scoreText.text(timePlayed)
+				penaltyText.text(penaltyTime)
+				finalText.text(finalTime)
 			}
 		}
 	}
 
+	//count false answers
 	function compare() {
 		const evaluatedArray = equationArray.map(function (item) {
 			return item.evaluated;
 		});
 
-		console.log(evaluatedArray);
-		
+		evaluatedArray.forEach(function(item, index) {
+			if (item !== playerEquationArray[index]) {
+				penaltyTime += 0.5
+			}
+		})
 
-		var difference = evaluatedArray.filter(
-			(x) => !playerEquationArray.includes(x)
-		);
-		console.log(difference);
+		finalTime = timePlayed + penaltyTime - 3
+	}
+
+	var timePlayed = 0
+	var penaltyTime = 0
+	var finalTime = 0
+
+	function startTimer() {
+		timePlayed = 0
+		penaltyTime = 0
+		finalTime = 0
+
+		timer = setInterval(function() {
+			timePlayed += 0.1
+		}, 100)
 	}
 
 	// create random number
@@ -106,6 +142,7 @@ $(document).ready(function () {
 		return Math.floor(Math.random() * Math.floor(limit + 1));
 	}
 
+	//create random equtations
 	function createQuestion(questNumber) {
 		rightEquation = randomInt(9);
 		wrongEquation = questNumber - rightEquation;
@@ -149,6 +186,7 @@ $(document).ready(function () {
 		shuffle(equationArray);
 	}
 
+	//shuffle array
 	function shuffle(array) {
 		let counter = array.length;
 
@@ -174,5 +212,17 @@ $(document).ready(function () {
 			gameStage.append(`<p>${item.value}</p>`);
 		});
 		gameStage.append('<div class="height-385"></div>');
+	}
+
+	// reset all
+	function resetQuestion() {
+		gameStage.find('p').remove()
+		gameStage.find('.height-385').remove()
+		startBtn.removeClass("disabled");
+		highlight.css('display', 'none')
+		countDown.text('3')
+		equationArray = []
+		playerEquationArray = []
+		scrollCount = 0
 	}
 });
