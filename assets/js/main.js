@@ -1,6 +1,7 @@
 $(document).ready(function () {
 	var levelSelect = $(".game-level input");
 	var startBtn = $(".game-start");
+	var restartBtn = $(".game-restart");
 	var level = $(".game-level");
 	var countDown = $(".countdown");
 	var gameStage = $(".game-stage");
@@ -9,10 +10,11 @@ $(document).ready(function () {
 	var btnRight = $(".btn-success");
 	var highlight = $(".highlight");
 	var gameResult = $(".game-result");
-	var restartBtn = $('.game-restart');
-	var scoreText = $('.game-result .score span')
-	var penaltyText = $('.game-result .penalty span')
-	var finalText = $('.game-result .final span')
+	var scoreText = $(".game-result .score span");
+	var penaltyText = $(".game-result .penalty span");
+	var finalText = $(".game-result .final span");
+
+	loadBestScore();
 
 	levelSelect.each(function () {
 		$(this).change(function () {
@@ -30,8 +32,9 @@ $(document).ready(function () {
 
 	startBtn.click(function () {
 		if (!startBtn.hasClass("disabled")) {
-			startBtn.addClass("disabled");
 			level.css("display", "none");
+			startBtn.addClass("disabled");
+			timer();
 			gameStage.css("display", "block");
 			countDown.css("display", "flex");
 			var second = 3;
@@ -51,25 +54,20 @@ $(document).ready(function () {
 					clearInterval(interval);
 				}
 			}, 1000);
-			startTimer();
 		}
 	});
 
+	restartBtn.click(function () {
+		resetAll();
+	});
+
 	btnWrong.click(function () {
-		select(false);
+		select("false");
 	});
 
 	btnRight.click(function () {
-		select(true);
+		select("true");
 	});
-
-	restartBtn.click(function () {
-		gameResult.css('display', 'none')
-		level.css('display', 'block')
-		restartBtn.css('display', 'none')
-		startBtn.css('display', 'block')
-		resetQuestion()
-	})
 
 	var firstNumber = 0;
 	var secondNumber = 0;
@@ -78,9 +76,20 @@ $(document).ready(function () {
 	var wrongEquationFormat = [];
 	var playerEquationArray = [];
 	var scrollCount = 0;
-	var wrongAnswers = 0;
+	var timePlayed = 0;
+	var timePenalty = 0;
+	var timeFinal = 0;
 
-	//player select
+	function timer() {
+		timePlayed = 0;
+		timePenalty = 0;
+		timeFinal = 0;
+
+		counter = setInterval(function () {
+			timePlayed += 0.1;
+		}, 100);
+	}
+
 	function select(result) {
 		scrollCount += 80;
 		if (playerEquationArray.length < $(".game-level input:checked").val()) {
@@ -96,45 +105,78 @@ $(document).ready(function () {
 				playerEquationArray.length === +$(".game-level input:checked").val()
 			) {
 				gameStage.css("display", "none");
-				btnGroup.css('display', 'none')
 				gameResult.css("display", "block");
-				restartBtn.css('display', 'block')
-				clearInterval(timer)
-				compare()
-				scoreText.text(timePlayed)
-				penaltyText.text(penaltyTime)
-				finalText.text(finalTime)
+				btnGroup.css("display", "none");
+				restartBtn.css("display", "block");
+				clearInterval(counter);
+				compare();
 			}
 		}
 	}
 
-	//count false answers
+	function rounded(number) {
+		return Math.round(number * 10) / 10;
+	}
+
 	function compare() {
 		const evaluatedArray = equationArray.map(function (item) {
 			return item.evaluated;
 		});
 
-		evaluatedArray.forEach(function(item, index) {
+		evaluatedArray.forEach(function (item, index) {
 			if (item !== playerEquationArray[index]) {
-				penaltyTime += 0.5
+				timePenalty += 0.5;
 			}
-		})
+		});
 
-		finalTime = timePlayed + penaltyTime - 3
+		timePlayed = rounded(timePlayed - 4);
+		timeFinal = timePlayed + timePenalty;
+		scoreText.text(timePlayed + "s");
+		penaltyText.text(timePenalty + "s");
+		finalText.text(timeFinal + "s");
+		saveBestScore();
 	}
 
-	var timePlayed = 0
-	var penaltyTime = 0
-	var finalTime = 0
+	function saveBestScore() {
+		var fastest = window.localStorage.getItem(
+			`${$(".game-level input:checked").val()}-quests`
+		);
+		var bestScore = 0;
 
-	function startTimer() {
-		timePlayed = 0
-		penaltyTime = 0
-		finalTime = 0
+		if (fastest) {
+			if (timeFinal < fastest) {
+				fastest = timeFinal;
+			}
+			window.localStorage.setItem(
+				`${$(".game-level input:checked").val()}-quests`,
+				fastest
+			);
+			$(`#${$(".game-level input:checked").val()} ~ p span`).text(
+				fastest + "s"
+			);
+		} else {
+			if (timeFinal < bestScore || bestScore === 0) {
+				bestScore = timeFinal;
+			}
+			window.localStorage.setItem(
+				`${$(".game-level input:checked").val()}-quests`,
+				bestScore
+			);
+			$(`#${$(".game-level input:checked").val()} ~ p span`).text(
+				bestScore + "s"
+			);
+		}
+	}
 
-		timer = setInterval(function() {
-			timePlayed += 0.1
-		}, 100)
+	function loadBestScore() {
+		level.find("label").each(function () {
+			var bestScore = window.localStorage.getItem(
+				`${$(this).find("input").attr("id")}-quests`
+			);
+			if (bestScore) {
+				$(this).find(".score").text(`${bestScore}s`);
+			}
+		});
 	}
 
 	// create random number
@@ -142,7 +184,6 @@ $(document).ready(function () {
 		return Math.floor(Math.random() * Math.floor(limit + 1));
 	}
 
-	//create random equtations
 	function createQuestion(questNumber) {
 		rightEquation = randomInt(9);
 		wrongEquation = questNumber - rightEquation;
@@ -186,7 +227,6 @@ $(document).ready(function () {
 		shuffle(equationArray);
 	}
 
-	//shuffle array
 	function shuffle(array) {
 		let counter = array.length;
 
@@ -214,15 +254,18 @@ $(document).ready(function () {
 		gameStage.append('<div class="height-385"></div>');
 	}
 
-	// reset all
-	function resetQuestion() {
-		gameStage.find('p').remove()
-		gameStage.find('.height-385').remove()
+	function resetAll() {
 		startBtn.removeClass("disabled");
-		highlight.css('display', 'none')
-		countDown.text('3')
-		equationArray = []
-		playerEquationArray = []
-		scrollCount = 0
+		playerEquationArray = [];
+		equationArray = [];
+		scrollCount = 0;
+		countDown.text("3");
+		gameStage.find("p").remove();
+		gameStage.find(".height-385").remove();
+		highlight.css("display", "none");
+		gameResult.css("display", "none");
+		level.css("display", "block");
+		restartBtn.css("display", "none");
+		startBtn.css("display", "block");
 	}
 });
